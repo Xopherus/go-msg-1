@@ -1,20 +1,12 @@
-PACKAGES=$(shell go list ./...)
-
 all: lint test
 
-init: tools
-	GO111MODULE=on go mod vendor
+fmt:
+	golangci-lint run ./... --fix
 
-lint: init
+lint:
 	golangci-lint run ./...
 
-test: init
+test:
 	go test -race -v ./...
 
-tools:
-	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(GOPATH)/bin v1.17.0
-
-fmt: tools
-	go fmt $(PACKAGES)
-
-.PHONY: help lint test fmt tools
+.PHONY: lint test fmt
