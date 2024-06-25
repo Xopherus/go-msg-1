@@ -9,4 +9,4 @@ lint:
 test:
 	go test -race -v ./...
 
-.PHONY: lint test fmt
+.PHONY: fmt lint test

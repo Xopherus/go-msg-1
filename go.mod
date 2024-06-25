@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/google/go-cmp v0.6.0
 	github.com/pierrec/lz4/v4 v4.1.8
+	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/redis/go-redis/v9 v9.5.3
 	go.opencensus.io v0.24.0
 	go.opentelemetry.io/otel v1.24.0
