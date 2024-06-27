@@ -1,0 +1,73 @@
+# https://docs.docker.com/compose/compose-file/#networks
+networks:
+  redis_prometheus:
+
+# https://docs.docker.com/compose/compose-file/#volumes
+volumes:
+  prometheus_prometheus:
+  prometheus_grafana:
+
+services:
+  redis:
+    image: redis:7.2.5
+    container_name: redis
+    networks:
+      - "redis_prometheus"
+    ports:
+      - "6379:6379"
+
+  grafana:
+    # https://hub.docker.com/r/grafana/grafana/tags
+    image: grafana/grafana:8.3.4
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - "redis_prometheus"
+    volumes:
+      - prometheus_grafana:/var/lib/grafana
+      - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/prometheus.yaml
+      - ./grafana/dashboards:/dashboards
+    environment:
+      GF_INSTALL_PLUGINS: "flant-statusmap-panel,grafana-piechart-panel"
+
+  prometheus:
+    # https://hub.docker.com/r/prom/prometheus/tags
+    image: prom/prometheus:v2.28.1
+    container_name: prometheus
+    networks:
+      - "redis_prometheus"
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_prometheus:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    networks:
+      - "rabbitmq_prometheus"
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /var/run:/var/run:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro 
+    command:
+      - '--store_container_labels=true'
+
+  # https://github.com/oliver006/redis_exporter
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.61.0
+    container_name: redis-exporter
+    networks:
+      - redis_prometheus
+    ports:
+      - "9121:9121"
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_EXPORTER_CHECK_SINGLE_STREAMS: stream1
+      REDIS_EXPORTER_INCL_SYSTEM_METRICS: true

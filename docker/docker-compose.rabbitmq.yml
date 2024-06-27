@@ -1,0 +1,69 @@
+# https://docs.docker.com/compose/compose-file/#networks
+networks:
+  rabbitmq_prometheus:
+
+# https://docs.docker.com/compose/compose-file/#volumes
+volumes:
+  prometheus_prometheus:
+  prometheus_grafana:
+
+services:
+  rabbitmq: 
+    image: rabbitmq:3.13.3
+    networks:
+      - "rabbitmq_prometheus"
+    ports:
+      - "5672:5672"
+    # https://unix.stackexchange.com/questions/71940/killing-tcp-connection-in-linux
+    # https://en.wikipedia.org/wiki/Tcpkill
+    # https://www.digitalocean.com/community/tutorials/iptables-essentials-common-firewall-rules-and-commands#block-an-ip-address
+    cap_add:
+      - ALL
+    environment:
+      RABBITMQ_ERLANG_COOKIE: prometheus
+      # Uncomment the following line if you want debug logs & colour
+      # RABBITMQ_LOG: debug,+color
+    volumes:
+      - ./rabbitmq/overview.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/overview-definitions.json:/etc/rabbitmq/rabbitmq-definitions.json:ro
+
+  grafana:
+    # https://hub.docker.com/r/grafana/grafana/tags
+    image: grafana/grafana:8.3.4
+    ports:
+      - "3000:3000"
+    networks:
+      - "rabbitmq_prometheus"
+    volumes:
+      - prometheus_grafana:/var/lib/grafana
+      - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/prometheus.yaml
+      - ./grafana/dashboards:/dashboards
+    environment:
+      GF_INSTALL_PLUGINS: "flant-statusmap-panel,grafana-piechart-panel"
+
+  prometheus:
+    # https://hub.docker.com/r/prom/prometheus/tags
+    image: prom/prometheus:v2.28.1
+    networks:
+      - "rabbitmq_prometheus"
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_prometheus:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    networks:
+      - "rabbitmq_prometheus"
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /var/run:/var/run:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro 
+    command:
+      - '--store_container_labels=true'
